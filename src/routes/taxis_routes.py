@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify
-#from app import app
 from models.taxis_models import filtered_taxis
 
 def init_routes_taxis(app):
