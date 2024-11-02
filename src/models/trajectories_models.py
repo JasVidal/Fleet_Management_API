@@ -21,6 +21,7 @@ class Trajectories(db.Model):
             'latitude': self.latitude,
             'longitude': self.longitude
         }
+        
     #Función latest
     def latest_trajectories_list():
 

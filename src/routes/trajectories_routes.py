@@ -45,8 +45,5 @@ def init_routes_trajectories(app):
 
         return jsonify(last_trajectory)
 
-"""         if not last_trajectory:
-            return jsonify({'error': 'No hay trayectorias disponibles'}),404
- """
             
 
