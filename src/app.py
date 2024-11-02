@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from database.config import Config
 from routes.taxis_routes import *
 from routes.trajectories_routes import *
+from routes.users_routes import *
 from database.db import db
 
 
@@ -17,6 +18,7 @@ db.init_app(app)
 
 init_routes_taxis(app)
 init_routes_trajectories(app)
+init_routes_users(app)
 
 
 #Se importan las rutas
