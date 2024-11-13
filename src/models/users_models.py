@@ -9,14 +9,13 @@ class Users(db.Model):
     name = db.Column(db.String, nullable=False)
     email = db.Column(db.String, nullable=False)
     password = db.Column(db.String, nullable=False)
-    role = db.Column(db.String, nullable=False)
 
     def convert_to_dictionary(self):
         return {
             'id': self.id,
             'name': self.name,
             'email': self.email,
-            'role': self.role
+            'password': self.password
         }
 
 def filtered_users(page, limit):
@@ -26,28 +25,29 @@ def filtered_users(page, limit):
 
 def save_new_user(user_data_dict):
 
+    #Obtener contraseña
     password = user_data_dict['password']
-    #Se oculta la contraseño por 1ra vez con un random salt
+
+    #Se oculta la contraseña por 1ra vez con bcrypt
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    #Revisar que visible password matchea con la anterior oculta
 
-    role=user_data_dict.get('role', 'user')
+    #Obtener rol, con user como valor por defecto
 
+    #Crear objeto usuario con contraseña encriptada
     user_data = Users(
         name=user_data_dict['name'],
         email=user_data_dict['email'],
         password=hashed.decode('utf-8'),
-        role=user_data_dict.get('role')
         )
 
     db.session.add(user_data)
     db.session.commit()
-
+    
     return user_data
 
-"""     #Validar si la contraseña es correcta
-    if bcrypt.checkpw(password, hashed):
-        print('¡Contraseña correcta! :DD')
-    else:
-        print('Contraseña incorrecta ):') """
-    
+def existing_email(email):
+    return db.session.query(Users).filter_by(email=email).first()
+
+
+
+

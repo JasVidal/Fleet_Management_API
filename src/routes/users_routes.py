@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from models.users_models import filtered_users, save_new_user
+from models.users_models import filtered_users, save_new_user,existing_email
 
 def init_routes_users(app):
     #Se crea endpoint y función
@@ -10,7 +10,6 @@ def init_routes_users(app):
         #Se establecen los parámetros
         page = request.args.get('page', default=1)
         limit = request.args.get('limit', default=10)
-
         
         try:
             page = int(page)
@@ -36,25 +35,27 @@ def init_routes_users(app):
         new_user_data = request.get_json()
 
         #Validar que se reciben los datos
-        if not new_user_data or 'name' not in new_user_data or 'email' not in new_user_data or 'password' not in new_user_data or 'role' not in new_user_data:
+        if not new_user_data or 'name' not in new_user_data or 'password' not in new_user_data:
             return jsonify({'error': 'Completar lo campos requeridos'}), 400
 
         #Obtener los datos del nuevo usuario
-        name = new_user_data.get('name')
-        email = new_user_data.get('email')
-        password = new_user_data.get('password')
-        role = new_user_data.get('role')
+        name = new_user_data['name']
+        email = new_user_data['email']
+        password = new_user_data['password']
+
+        existing_user = existing_email(email)
+        if existing_user:
+            return jsonify({'error': 'Este correo ya existe en el sistema'}), 409
 
         #Guardar el nuevo usuario y obtenerlo
         new_user = save_new_user({
             'name': name,
             'email': email,
             'password': password,
-            'role': role
         })
 
         return jsonify({
             'id': new_user.id,
             'name': new_user.name,
-            'email': new_user.email
+            'email': new_user.email,
         }),201
