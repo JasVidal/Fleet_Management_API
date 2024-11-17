@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from database.db import db
 import bcrypt
 
@@ -48,6 +48,50 @@ def save_new_user(user_data_dict):
 def existing_email(email):
     return db.session.query(Users).filter_by(email=email).first()
 
+#--------SEPARACION------------
 
+def data_to_update(uid):
+    
+    user_changed = db.session.query(Users).filter_by(id=uid).first()
 
+    if not user_changed:
+        return jsonify({'error': 'El usuario no existe jeje'}), 404
+
+    data_update = request.get_json()
+
+    if data_update is None:
+        return jsonify({'error': 'El cuerpo de la solicitud está vacío'}), 400
+
+    if 'email' in data_update or 'password' in data_update:
+            return jsonify({'error': 'No se puede modificar el email o la contraseña'}), 400
+
+    if 'name' in data_update:
+        user_changed.name = data_update['name']
+
+    db.session.commit()
+
+    return jsonify({
+            'message': 'Usuario actualizado correctamente',
+            'id': user_changed.id,
+            'name':user_changed.name,
+            'email': user_changed.email,
+        }), 200
+
+#--------------------------------------------
+
+def delete_by_id_or_email(uid):
+    # Buscar al usuario por ID o email
+    current_user = None
+    
+    if isinstance(uid, str):
+        current_user = db.session.query(Users).filter_by(email=uid).first()
+    
+    else:
+        current_user = db.session.query(Users).filter_by(id=uid).first()
+
+    if current_user:
+        db.session.delete(current_user)  # Eliminar al usuario
+        db.session.commit()  # Confirmar los cambios
+        return current_user  # Si el usuario fue eliminado, retornar el usuario
+    return None
 

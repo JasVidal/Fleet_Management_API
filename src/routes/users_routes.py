@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from models.users_models import filtered_users, save_new_user,existing_email
+from models.users_models import filtered_users, save_new_user,existing_email, data_to_update, delete_by_id_or_email
 
 def init_routes_users(app):
     #Se crea endpoint y función
@@ -58,4 +58,29 @@ def init_routes_users(app):
             'id': new_user.id,
             'name': new_user.name,
             'email': new_user.email,
-        }),201
+        }), 201
+
+
+    @app.route('/users/<int:uid>', methods=['PATCH']) #actualizar info
+
+    def update_user(uid):
+
+        new_data = data_to_update(uid)
+        
+        return new_data
+
+        #Verificar que no se intenta cambiar email o password
+
+    @app.route('/users/<uid>', methods=['DELETE'])
+    
+    def delete_user(uid):
+        user_to_delete = delete_by_id_or_email(uid) 
+
+        if not user_to_delete:
+            return jsonify({'error': 'Este usuario no existe'}), 404
+
+        return jsonify({
+        'id': user_to_delete.id,
+        'email': user_to_delete.email,
+        'name': user_to_delete.name
+    }), 200
