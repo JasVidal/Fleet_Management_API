@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify
 from models.users_models import filtered_users, save_new_user,existing_email, data_to_update, delete_by_id_or_email
+from models.errors.existing_user_error import InvalidPageError, InvalidLimitError, ExistingEmailError, UncompleteFieldsError, UserNotFoundError, NoModifyError, EmptyRequestError, UserNotExistError
 
 def init_routes_users(app):
-    #Se crea endpoint y función
-    # - Usa decorador para indicar el URL
+
+#------ Endpoint para OBTENER Usuarios con método GET ------
+
     @app.route('/users', methods=['GET'])
     def users_list():
 
@@ -14,73 +16,91 @@ def init_routes_users(app):
         try:
             page = int(page)
             limit = int(limit)
+            
+            #Se llama a la función
+            users = filtered_users(page, limit)
+
+            return jsonify(users)
 
         except ValueError:
             return jsonify({'error': 'Los parámetros no son válidos'}), 400
 
-        if not page or page <= 0:
-            return jsonify({'error': 'Página inválida'}), 400
-                    
-        if not limit or limit <=0:
-            return jsonify({'error': 'Límite inválido'}), 400
-            
-        #Se llama a la función
-        users = filtered_users(page, limit)
+        except InvalidPageError as error:
+            return jsonify({'error': error.value}), 400
+        
+        except InvalidLimitError as error:
+            return jsonify({'error': error.value}), 400
 
-        return jsonify(users)
+
+#------ Endpoint para CREAR Usuarios con método POST ------
 
     @app.route('/users', methods=['POST']) #save info
     def create_user(): #especificar la info a guardar
         
-        new_user_data = request.get_json()
+        try:
+            
+            new_user_data = request.get_json()
 
-        #Validar que se reciben los datos
-        if not new_user_data or 'name' not in new_user_data or 'password' not in new_user_data:
-            return jsonify({'error': 'Completar lo campos requeridos'}), 400
+            # Llamar a la función save_new_user que ahora realiza la validación y creación del usuario
+            new_user = save_new_user(new_user_data)
 
-        #Obtener los datos del nuevo usuario
-        name = new_user_data['name']
-        email = new_user_data['email']
-        password = new_user_data['password']
+            return jsonify({
+                'id': new_user.id,
+                'name': new_user.name,
+                'email': new_user.email,
+            }), 201
+        
+        except ExistingEmailError as error: 
+            return jsonify({'error': error.value}), 409
 
-        existing_user = existing_email(email)
-        if existing_user:
-            return jsonify({'error': 'Este correo ya existe en el sistema'}), 409
+        except UncompleteFieldsError as error:
+            return jsonify({'error': error.value}), 400
 
-        #Guardar el nuevo usuario y obtenerlo
-        new_user = save_new_user({
-            'name': name,
-            'email': email,
-            'password': password,
-        })
 
-        return jsonify({
-            'id': new_user.id,
-            'name': new_user.name,
-            'email': new_user.email,
-        }), 201
-
+#------ Endpoint para ACTUALIZAR Usuarios con método PATCH ------
 
     @app.route('/users/<int:uid>', methods=['PATCH']) #actualizar info
 
     def update_user(uid):
 
-        new_data = data_to_update(uid)
-        
-        return new_data
+        data_update = request.get_json()
 
-        #Verificar que no se intenta cambiar email o password
+        if data_update is None:
+            raise EmptyRequestError('El cuerpo de la solicitud está vacío')
+        
+        # Llamamos a data_to_update para realizar la lógica de la actualización
+        try:
+            # Si todo está bien, procedemos a actualizar
+            new_data = data_to_update(uid, data_update)
+            return jsonify(new_data), 200
+
+        except EmptyRequestError as error:
+            # Si ocurre un ValueError: cuerpo vacío
+            return jsonify({'error': error.value}), 400
+
+        except NoModifyError as error:
+            # Si hay errores como intento de modificar email o password
+            return jsonify({'error': error.value}), 400
+
+        except UserNotFoundError as error:
+            # Si el usuario no existe
+            return jsonify({'error': error.value}), 404
+
+#------ Endpoint para BORRAR Usuarios con método DELETE ------
 
     @app.route('/users/<uid>', methods=['DELETE'])
     
     def delete_user(uid):
-        user_to_delete = delete_by_id_or_email(uid) 
+        
+        try:
+            user_to_delete = delete_by_id_or_email(uid) 
 
-        if not user_to_delete:
-            return jsonify({'error': 'Este usuario no existe'}), 404
+            return jsonify({
+            'id': user_to_delete.id,
+            'email': user_to_delete.email,
+            'name': user_to_delete.name
+            }), 200
 
-        return jsonify({
-        'id': user_to_delete.id,
-        'email': user_to_delete.email,
-        'name': user_to_delete.name
-    }), 200
+        # Si el usuario no se encuentra, devolver un error 404
+        except UserNotExistError as error:
+            return jsonify({'error': error.value}), 404
